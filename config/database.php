@@ -1,7 +1,7 @@
 <?php
 // Configuration de la base de données
 $host = 'localhost';
-$dbname = 'mediatheque_rochefourchet';
+$dbname = 'sonzinie';
 $username = 'root'; // Changez selon votre configuration
 $password = '';     // Changez selon votre configuration
 

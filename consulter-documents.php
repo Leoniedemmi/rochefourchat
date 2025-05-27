@@ -253,10 +253,10 @@ try {
                         <?php else: ?>
                             <?php foreach ($documents as $document): ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($document['type']) ?></td>
-                                    <td><?= htmlspecialchars($document['titre']) ?></td>
-                                    <td><?= htmlspecialchars($document['auteur']) ?></td>
-                                    <td><?= htmlspecialchars($document['genre']) ?></td>
+                                    <td><?= htmlspecialchars($document['Type']) ?></td>
+                                    <td><?= htmlspecialchars($document['Titre']) ?></td>
+                                    <td><?= htmlspecialchars($document['Auteur']) ?></td>
+                                    <td><?= htmlspecialchars($document['Genre']) ?></td>
                                     <td><?= htmlspecialchars($document['Date_Parution']) ?></td>
                                     <td><?= htmlspecialchars($document['Support']) ?></td>
                                     <td>
