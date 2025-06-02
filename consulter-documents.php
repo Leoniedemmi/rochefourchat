@@ -26,8 +26,7 @@ try {
                 CASE
                     WHEN (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) > 0 THEN 'Disponible'
                     ELSE 'Emprunté'
-                END AS etat,
-                p.Date_Parution as derniere_consultation
+                END AS etat
             FROM 
                 PRODUIT p
             LEFT JOIN (
@@ -260,13 +259,12 @@ try {
                             <th>Date Parution</th>
                             <th>Support</th>
                             <th>Statut</th>
-                            <th>Dernière consultation</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($documents)): ?>
                             <tr>
-                                <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+                                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">
                                     Aucun document trouvé
                                 </td>
                             </tr>
@@ -284,7 +282,6 @@ try {
                                             <?= htmlspecialchars($document['statut_formate']) ?>
                                         </span>
                                     </td>
-                                    <td><?= date('d/m/Y', strtotime($document['derniere_consultation'])) ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
