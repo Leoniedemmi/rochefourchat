@@ -20,10 +20,16 @@ try {
                 p.Titre,
                 p.Type,
                 CASE 
-                    WHEN e.Date_Retour IS NOT NULL THEN 'Terminé'
-                    WHEN e.Date_Retour IS NULL THEN 'En cours'
+                    WHEN e.Date_Retour > CURDATE() THEN 'En cours'
+                    WHEN e.Date_Retour <= CURDATE() AND e.Date_Retour >= e.Date_Emprunt THEN 'Terminé'
+                    WHEN e.Date_Retour < e.Date_Emprunt THEN 'En retard'
                     ELSE 'Terminé'
-                END AS statut
+                END AS statut,
+                CASE 
+                    WHEN e.Date_Retour < CURDATE() AND e.Date_Retour >= e.Date_Emprunt THEN 0
+                    WHEN e.Date_Retour > CURDATE() THEN 1
+                    ELSE -1
+                END AS statut_ordre
             FROM EMPRUNT e
             JOIN ADHERENT a ON e.ADHERENT_id = a.id
             JOIN PRODUIT p ON e.PRODUIT_id = p.id
@@ -64,14 +70,17 @@ try {
         $params[':type'] = $type_filter;
     }
     
-    // Filtre par statut - CORRECTION ICI
+    // Filtre par statut - LOGIQUE CORRIGÉE
     if (!empty($statut_filter) && $statut_filter != 'Tous') {
         switch ($statut_filter) {
             case 'En cours':
-                $sql .= " AND e.Date_Retour IS NULL";
+                $sql .= " AND e.Date_Retour > CURDATE()";
                 break;
-                            case 'Terminé':
-                $sql .= " AND e.Date_Retour IS NOT NULL";
+            case 'Terminé':
+                $sql .= " AND e.Date_Retour <= CURDATE() AND e.Date_Retour >= e.Date_Emprunt";
+                break;
+            case 'En retard':
+                $sql .= " AND e.Date_Retour < e.Date_Emprunt";
                 break;
         }
     }
@@ -207,6 +216,7 @@ try {
                                 <option value="">Tous</option>
                                 <option value="En cours" <?= ($statut_filter == 'En cours') ? 'selected' : '' ?>>En cours</option>
                                 <option value="Terminé" <?= ($statut_filter == 'Terminé') ? 'selected' : '' ?>>Terminé</option>
+                                <option value="En retard" <?= ($statut_filter == 'En retard') ? 'selected' : '' ?>>En retard</option>
                             </select>
                         </div>
                     </div>
@@ -250,12 +260,11 @@ try {
                                     <td><?= htmlspecialchars($emprunt['Titre']) ?></td>
                                     <td><?= htmlspecialchars($emprunt['Type']) ?></td>
                                     <td><?= date('d/m/Y', strtotime($emprunt['Date_Emprunt'])) ?></td>
-                                    <td>
-                                        <?= $emprunt['Date_Retour'] ? date('d/m/Y', strtotime($emprunt['Date_Retour'])) : '-' ?>
-                                    </td>
+                                    <td><?= date('d/m/Y', strtotime($emprunt['Date_Retour'])) ?></td>
                                     <td>
                                         <span class="status-<?= 
-                                            $emprunt['statut'] == 'En cours' ? 'active' : 'termine' 
+                                            $emprunt['statut'] == 'En cours' ? 'active' : 
+                                            ($emprunt['statut'] == 'En retard' ? 'retard' : 'termine')
                                         ?>">
                                             <?= htmlspecialchars($emprunt['statut']) ?>
                                         </span>
