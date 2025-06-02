@@ -64,13 +64,13 @@ try {
         $params[':type'] = $type_filter;
     }
     
-    // Filtre par statut
+    // Filtre par statut - CORRECTION ICI
     if (!empty($statut_filter) && $statut_filter != 'Tous') {
         switch ($statut_filter) {
             case 'En cours':
                 $sql .= " AND e.Date_Retour IS NULL";
                 break;
-            case 'Terminé':
+                            case 'Terminé':
                 $sql .= " AND e.Date_Retour IS NOT NULL";
                 break;
         }
@@ -118,9 +118,14 @@ try {
         }
         .status-active {
             color: green;
+            font-weight: bold;
         }
         .status-termine {
             color: #666;
+        }
+        .status-retard {
+            color: red;
+            font-weight: bold;
         }
         .results-count {
             margin-bottom: 15px;
