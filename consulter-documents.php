@@ -11,33 +11,53 @@ $statut_filter = isset($_GET['statut']) ? $_GET['statut'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
 try {
-    // Construire la requête SQL avec les filtres
-    $sql = "SELECT p.*, 
-                   CASE 
-                       WHEN e.PRODUIT_id IS NOT NULL AND e.Date_Retour IS NULL THEN 'Emprunté'
-                       ELSE 'Disponible'
-                   END as statut,
-                   MAX(COALESCE(e.Date_Emprunt, NOW())) as derniere_consultation,
-                   COUNT(CASE WHEN e.Date_Retour IS NULL THEN 1 END) as nb_empruntes
-            FROM PRODUIT p
-            LEFT JOIN EMPRUNT e ON p.id = e.PRODUIT_id
+    // Construire la requête SQL avec les filtres - utilisation de ta nouvelle requête
+    $sql = "SELECT 
+                p.id,
+                p.Titre,
+                p.Auteur,
+                p.Type,
+                p.Support,
+                p.Genre,
+                p.Date_Parution,
+                p.nombre_exemplaires,
+                p.Editeur,
+                (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) AS exemplaires_disponibles,
+                CASE
+                    WHEN (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) > 0 THEN 'Disponible'
+                    ELSE 'Emprunté'
+                END AS etat,
+                p.Date_Parution as derniere_consultation
+            FROM 
+                PRODUIT p
+            LEFT JOIN (
+                SELECT 
+                    PRODUIT_id,
+                    COUNT(*) AS nombre_emprunts
+                FROM 
+                    EMPRUNT
+                WHERE 
+                    Date_Retour IS NULL OR Date_Retour >= CURDATE()
+                GROUP BY 
+                    PRODUIT_id
+            ) e ON p.id = e.PRODUIT_id
             WHERE 1=1";
     
     $params = [];
     
     // Ajouter les conditions de filtre
     if (!empty($type_filter) && $type_filter != 'Tous') {
-        $sql .= " AND p.type = :type";
+        $sql .= " AND p.Type = :type";
         $params[':type'] = $type_filter;
     }
     
     if (!empty($auteur_filter) && $auteur_filter != 'Tous') {
-        $sql .= " AND p.auteur = :auteur";
+        $sql .= " AND p.Auteur = :auteur";
         $params[':auteur'] = $auteur_filter;
     }
     
     if (!empty($genre_filter) && $genre_filter != 'Tous') {
-        $sql .= " AND p.genre = :genre";
+        $sql .= " AND p.Genre = :genre";
         $params[':genre'] = $genre_filter;
     }
     
@@ -47,41 +67,41 @@ try {
     }
     
     if (!empty($search)) {
-        $sql .= " AND (p.titre LIKE :search OR p.auteur LIKE :search OR p.genre LIKE :search)";
+        $sql .= " AND (p.Titre LIKE :search OR p.Auteur LIKE :search OR p.Genre LIKE :search)";
         $params[':search'] = '%' . $search . '%';
     }
     
-    $sql .= " GROUP BY p.id";
-    
-    // Filtrer par statut après le GROUP BY
+    // Filtrer par statut
     if (!empty($statut_filter) && $statut_filter != 'Tous') {
         if ($statut_filter == 'Disponible') {
-            $sql .= " HAVING (p.nombre_exemplaires - COUNT(CASE WHEN e.Date_Retour IS NULL THEN 1 END)) > 0";
+            $sql .= " HAVING (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) > 0";
         } elseif ($statut_filter == 'Emprunté') {
-            $sql .= " HAVING COUNT(CASE WHEN e.Date_Retour IS NULL THEN 1 END) > 0";
+            $sql .= " HAVING (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) <= 0";
         }
     }
     
-    $sql .= " ORDER BY p.titre";
+    $sql .= " ORDER BY p.Titre";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Recalculer le statut en tenant compte du nombre d'exemplaires
+    // Formatter le statut avec le nombre d'exemplaires
     foreach ($documents as &$doc) {
-        $disponibles = $doc['nombre_exemplaires'] - $doc['nb_empruntes'];
+        $disponibles = $doc['exemplaires_disponibles'];
+        $total = $doc['nombre_exemplaires'];
+        
         if ($disponibles > 0) {
-            $doc['statut'] = 'Disponible (' . $disponibles . '/' . $doc['nombre_exemplaires'] . ')';
+            $doc['statut_formate'] = 'Disponible (' . $disponibles . '/' . $total . ')';
         } else {
-            $doc['statut'] = 'Emprunté (' . $doc['nb_empruntes'] . '/' . $doc['nombre_exemplaires'] . ')';
+            $doc['statut_formate'] = 'Emprunté (0/' . $total . ')';
         }
     }
     
     // Récupérer les données pour les filtres
-    $types = $pdo->query("SELECT DISTINCT type FROM PRODUIT WHERE type IS NOT NULL AND type != '' ORDER BY type")->fetchAll(PDO::FETCH_COLUMN);
-    $auteurs = $pdo->query("SELECT DISTINCT auteur FROM PRODUIT WHERE auteur IS NOT NULL AND auteur != '' ORDER BY auteur")->fetchAll(PDO::FETCH_COLUMN);
-    $genres = $pdo->query("SELECT DISTINCT genre FROM PRODUIT WHERE genre IS NOT NULL AND genre != '' ORDER BY genre")->fetchAll(PDO::FETCH_COLUMN);
+    $types = $pdo->query("SELECT DISTINCT Type FROM PRODUIT WHERE Type IS NOT NULL AND Type != '' ORDER BY Type")->fetchAll(PDO::FETCH_COLUMN);
+    $auteurs = $pdo->query("SELECT DISTINCT Auteur FROM PRODUIT WHERE Auteur IS NOT NULL AND Auteur != '' ORDER BY Auteur")->fetchAll(PDO::FETCH_COLUMN);
+    $genres = $pdo->query("SELECT DISTINCT Genre FROM PRODUIT WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre")->fetchAll(PDO::FETCH_COLUMN);
     $dates = $pdo->query("SELECT DISTINCT SUBSTRING(Date_Parution, 1, 4) as annee FROM PRODUIT WHERE Date_Parution IS NOT NULL AND Date_Parution != '' ORDER BY annee DESC")->fetchAll(PDO::FETCH_COLUMN);
     
 } catch(PDOException $e) {
@@ -244,7 +264,7 @@ try {
                         </tr>
                     </thead>
                     <tbody>
-                                                    <?php if (empty($documents)): ?>
+                        <?php if (empty($documents)): ?>
                             <tr>
                                 <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
                                     Aucun document trouvé
@@ -260,8 +280,8 @@ try {
                                     <td><?= htmlspecialchars($document['Date_Parution']) ?></td>
                                     <td><?= htmlspecialchars($document['Support']) ?></td>
                                     <td>
-                                        <span class="status-<?= (strpos($document['statut'], 'Disponible') !== false) ? 'disponible' : 'emprunte' ?>">
-                                            <?= htmlspecialchars($document['statut']) ?>
+                                        <span class="status-<?= (strpos($document['statut_formate'], 'Disponible') !== false) ? 'disponible' : 'emprunte' ?>">
+                                            <?= htmlspecialchars($document['statut_formate']) ?>
                                         </span>
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($document['derniere_consultation'])) ?></td>
