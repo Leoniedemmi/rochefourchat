@@ -1,8 +1,6 @@
 <?php
-// Inclure le fichier de configuration de la base de données
 require_once 'config/database.php';
 
-// Initialiser les variables de filtre
 $type_filter = isset($_GET['type']) ? $_GET['type'] : '';
 $auteur_filter = isset($_GET['auteur']) ? $_GET['auteur'] : '';
 $genre_filter = isset($_GET['genre']) ? $_GET['genre'] : '';
@@ -11,7 +9,6 @@ $statut_filter = isset($_GET['statut']) ? $_GET['statut'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
 try {
-    // Construire la requête SQL avec les filtres - utilisation de ta nouvelle requête
     $sql = "SELECT 
                 p.id,
                 p.Titre,
@@ -44,7 +41,6 @@ try {
     
     $params = [];
     
-    // Ajouter les conditions de filtre
     if (!empty($type_filter) && $type_filter != 'Tous') {
         $sql .= " AND p.Type = :type";
         $params[':type'] = $type_filter;
@@ -70,7 +66,6 @@ try {
         $params[':search'] = '%' . $search . '%';
     }
     
-    // Filtrer par statut
     if (!empty($statut_filter) && $statut_filter != 'Tous') {
         if ($statut_filter == 'Disponible') {
             $sql .= " HAVING (p.nombre_exemplaires - IFNULL(e.nombre_emprunts, 0)) > 0";
@@ -85,7 +80,6 @@ try {
     $stmt->execute($params);
     $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Formatter le statut avec le nombre d'exemplaires
     foreach ($documents as &$doc) {
         $disponibles = $doc['exemplaires_disponibles'];
         $total = $doc['nombre_exemplaires'];
@@ -97,7 +91,6 @@ try {
         }
     }
     
-    // Récupérer les données pour les filtres
     $types = $pdo->query("SELECT DISTINCT Type FROM PRODUIT WHERE Type IS NOT NULL AND Type != '' ORDER BY Type")->fetchAll(PDO::FETCH_COLUMN);
     $auteurs = $pdo->query("SELECT DISTINCT Auteur FROM PRODUIT WHERE Auteur IS NOT NULL AND Auteur != '' ORDER BY Auteur")->fetchAll(PDO::FETCH_COLUMN);
     $genres = $pdo->query("SELECT DISTINCT Genre FROM PRODUIT WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre")->fetchAll(PDO::FETCH_COLUMN);
@@ -146,7 +139,6 @@ try {
 </head>
 <body>
     <div class="container">
-        <!-- Menu de navigation -->
         <div class="sidebar">
             <div class="logo">
                 <h3>Admin</h3>
@@ -169,8 +161,6 @@ try {
                 </ul>
             </nav>
         </div>
-
-        <!-- Contenu principal -->
         <div class="content">
             <div class="header">
                 <h1>Consulter les documents</h1>
