@@ -10,7 +10,7 @@ $statut_filter = isset($_GET['statut']) ? $_GET['statut'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 
 try {
-    // Construire la requête SQL avec les filtres
+    // Construire la requête SQL avec les filtres - LOGIQUE CORRIGÉE
     $sql = "SELECT 
                 e.id,
                 e.Date_Emprunt,
@@ -20,15 +20,16 @@ try {
                 p.Titre,
                 p.Type,
                 CASE 
-                    WHEN e.Date_Retour > CURDATE() THEN 'En cours'
-                    WHEN e.Date_Retour <= CURDATE() AND e.Date_Retour >= e.Date_Emprunt THEN 'Terminé'
-                    WHEN e.Date_Retour < e.Date_Emprunt THEN 'En retard'
+                    WHEN e.Date_Emprunt > CURDATE() THEN 'Réservé'
+                    WHEN e.Date_Emprunt <= CURDATE() AND e.Date_Retour > CURDATE() THEN 'En cours'
+                    WHEN e.Date_Retour <= CURDATE() THEN 'Terminé'
                     ELSE 'Terminé'
                 END AS statut,
                 CASE 
-                    WHEN e.Date_Retour < CURDATE() AND e.Date_Retour >= e.Date_Emprunt THEN 0
-                    WHEN e.Date_Retour > CURDATE() THEN 1
-                    ELSE -1
+                    WHEN e.Date_Emprunt > CURDATE() THEN 3
+                    WHEN e.Date_Emprunt <= CURDATE() AND e.Date_Retour > CURDATE() THEN 2
+                    WHEN e.Date_Retour <= CURDATE() THEN 1
+                    ELSE 1
                 END AS statut_ordre
             FROM EMPRUNT e
             JOIN ADHERENT a ON e.ADHERENT_id = a.id
@@ -73,19 +74,19 @@ try {
     // Filtre par statut - LOGIQUE CORRIGÉE
     if (!empty($statut_filter) && $statut_filter != 'Tous') {
         switch ($statut_filter) {
+            case 'Réservé':
+                $sql .= " AND e.Date_Emprunt > CURDATE()";
+                break;
             case 'En cours':
-                $sql .= " AND e.Date_Retour > CURDATE()";
+                $sql .= " AND e.Date_Emprunt <= CURDATE() AND e.Date_Retour > CURDATE()";
                 break;
             case 'Terminé':
-                $sql .= " AND e.Date_Retour <= CURDATE() AND e.Date_Retour >= e.Date_Emprunt";
-                break;
-            case 'En retard':
-                $sql .= " AND e.Date_Retour < e.Date_Emprunt";
+                $sql .= " AND e.Date_Retour <= CURDATE()";
                 break;
         }
     }
     
-    $sql .= " ORDER BY e.Date_Emprunt DESC";
+    $sql .= " ORDER BY statut_ordre DESC, e.Date_Emprunt DESC";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -132,8 +133,8 @@ try {
         .status-termine {
             color: #666;
         }
-        .status-retard {
-            color: red;
+        .status-reserve {
+            color: #ff9500;
             font-weight: bold;
         }
         .results-count {
@@ -217,9 +218,9 @@ try {
                             <label>Statut</label>
                             <select name="statut" class="filter-select" onchange="this.form.submit()">
                                 <option value="">Tous</option>
+                                <option value="Réservé" <?= ($statut_filter == 'Réservé') ? 'selected' : '' ?>>Réservé</option>
                                 <option value="En cours" <?= ($statut_filter == 'En cours') ? 'selected' : '' ?>>En cours</option>
                                 <option value="Terminé" <?= ($statut_filter == 'Terminé') ? 'selected' : '' ?>>Terminé</option>
-                                <option value="En retard" <?= ($statut_filter == 'En retard') ? 'selected' : '' ?>>En retard</option>
                             </select>
                         </div>
                     </div>
@@ -267,7 +268,7 @@ try {
                                     <td>
                                         <span class="status-<?= 
                                             $emprunt['statut'] == 'En cours' ? 'active' : 
-                                            ($emprunt['statut'] == 'En retard' ? 'retard' : 'termine')
+                                            ($emprunt['statut'] == 'Réservé' ? 'reserve' : 'termine')
                                         ?>">
                                             <?= htmlspecialchars($emprunt['statut']) ?>
                                         </span>

@@ -58,9 +58,9 @@ $stmt = $pdo->prepare("SELECT
                 p.Titre,
                 p.Type,
                 CASE 
-                    WHEN e.Date_Retour > CURDATE() THEN 'En cours'
-                    WHEN e.Date_Retour <= CURDATE() AND e.Date_Retour >= e.Date_Emprunt THEN 'Terminé'
-                    WHEN e.Date_Retour < e.Date_Emprunt THEN 'En retard'
+                    WHEN e.Date_Emprunt > CURDATE() THEN 'Réservé'
+                    WHEN e.Date_Emprunt <= CURDATE() AND e.Date_Retour > CURDATE() THEN 'En cours'
+                    WHEN e.Date_Retour <= CURDATE() THEN 'Terminé'
                     ELSE 'Terminé'
                 END AS statut
             FROM EMPRUNT e
@@ -208,8 +208,8 @@ if (isset($_GET['edit_id'])) {
         .status-termine {
             color: #666;
         }
-        .status-retard {
-            color: red;
+        .status-reserve {
+            color: #ff9500;
             font-weight: bold;
         }
         .readonly-field {
@@ -296,7 +296,7 @@ if (isset($_GET['edit_id'])) {
                                 <span><?php echo date('d/m/Y', strtotime($emprunt['Date_Retour'])); ?></span>
                                 <span class="status-<?= 
                                     $emprunt['statut'] == 'En cours' ? 'active' : 
-                                    ($emprunt['statut'] == 'En retard' ? 'retard' : 'termine')
+                                    ($emprunt['statut'] == 'Réservé' ? 'reserve' : 'termine')
                                 ?>">
                                     <?php echo htmlspecialchars($emprunt['statut']); ?>
                                 </span>
