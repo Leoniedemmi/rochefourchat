@@ -2,6 +2,12 @@
 // Inclure le fichier de configuration de la base de données
 require_once 'config/database.php';
 
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
 // Initialiser les variables de filtre
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $nom_filter = isset($_GET['nom']) ? $_GET['nom'] : '';
@@ -59,31 +65,6 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulter les adhérents - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
-    <style>
-        
-        
-        .results-count {
-            margin-bottom: 15px;
-            font-style: italic;
-            color: #666;
-        }
-        .email-cell {
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .emprunts-count {
-            text-align: center;
-            font-weight: bold;
-        }
-        .emprunts-actifs {
-            color: #e74c3c;
-        }
-        .emprunts-zero {
-            color: #27ae60;
-        }
-    </style>
 </head>
 <body>
     <div class="container">

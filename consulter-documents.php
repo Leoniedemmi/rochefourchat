@@ -1,6 +1,12 @@
 <?php
 require_once 'config/database.php';
 
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
 $type_filter = isset($_GET['type']) ? $_GET['type'] : '';
 $auteur_filter = isset($_GET['auteur']) ? $_GET['auteur'] : '';
 $genre_filter = isset($_GET['genre']) ? $_GET['genre'] : '';
@@ -114,101 +120,6 @@ try {
     <title>Consulter les documents - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .search-bar {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .search-filters {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .search-filters input[type="text"] {
-            padding: 0.5rem;
-            width: 300px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .search-filters select {
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-            min-width: 150px;
-        }
-        
-        .search-filters button {
-            background-color: #b35c5c;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .search-filters button:hover {
-            background-color: #a04848;
-        }
-        
-        .search-results {
-            margin-bottom: 20px;
-        }
-        
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 15px;
-        }
-        
-        .product-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #b35c5c;
-        }
-        
-        .product-title {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        
-        .product-author {
-            color: #666;
-            font-style: italic;
-            margin-bottom: 10px;
-        }
-        
-        .product-type {
-            background-color: #b35c5c;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 12px;
-            font-size: 12px;
-        }
-        
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-    </style>
 </head>
 <body>
     <div class="container">

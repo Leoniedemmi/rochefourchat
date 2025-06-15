@@ -1,5 +1,13 @@
 <?php
 require_once 'config/database.php';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
+
 $message = '';
 $messageType = '';
 
@@ -98,128 +106,6 @@ if (isset($_GET['edit_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modifier/supprimer un emprunt - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
-    <style>
-        .form-modifier {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        .emprunt-list {
-            margin-top: 20px;
-            background-color: #fff8f8;
-            padding: 15px;
-            border-radius: 5px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .emprunt-item {
-            display: grid;
-            grid-template-columns: 1fr 2fr 2fr 1fr 1fr 1fr 1fr auto;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            align-items: center;
-            font-size: 12px;
-        }
-        .emprunt-item:hover {
-            background-color: #f0f0f0;
-        }
-        .button-group {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .modify-btn, .edit-btn {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 12px;
-        }
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .modify-btn:hover, .edit-btn:hover {
-            background-color: #45a049;
-        }
-        .delete-btn:hover {
-            background-color: #da190b;
-        }
-        .message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .search-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .emprunt-header {
-            display: grid;
-            grid-template-columns: 1fr 2fr 2fr 1fr 1fr 1fr 1fr auto;
-            gap: 10px;
-            font-weight: bold;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-            font-size: 12px;
-        }
-        .cancel-btn {
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .cancel-btn:hover {
-            background-color: #5a6268;
-        }
-        .form-group-full {
-            grid-column: 1 / -1;
-        }
-        .status-active {
-            color: green;
-            font-weight: bold;
-        }
-        .status-termine {
-            color: #666;
-        }
-        .status-reserve {
-            color: #ff9500;
-            font-weight: bold;
-        }
-        .readonly-field {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 8px;
-            border-radius: 4px;
-            color: #6c757d;
-        }
-    </style>
 </head>
 <body>
     <div class="container">

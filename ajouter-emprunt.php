@@ -1,6 +1,11 @@
 <?php
 require_once 'config/database.php';
-
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nom_adherent = trim($_POST['nom_adherent']);
@@ -86,52 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajouter un emprunt - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
-    <style>
-        .form-emprunt {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            max-width: 800px;
-        }
-        .form-group-wide {
-            grid-column: span 2;
-        }
-        .btn-container {
-            grid-column: span 2;
-            text-align: center;
-            margin-top: 20px;
-        }
-        .message {
-            grid-column: span 2;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-        }
-        .form-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-    </style>
 </head>
 <body>
     <div class="container">

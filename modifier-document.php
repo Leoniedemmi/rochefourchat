@@ -1,5 +1,13 @@
 <?php
 require_once 'config/database.php';
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
+
 $message = '';
 $messageType = '';
 
@@ -107,152 +115,6 @@ if (isset($_GET['edit_id'])) {
     <title>Modifier/supprimer un document - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        .search-bar {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .search-filters {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .search-filters input[type="text"] {
-            padding: 0.5rem;
-            width: 300px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        .search-filters select {
-            padding: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-            min-width: 150px;
-        }
-        
-        .search-filters button {
-            background-color: #b35c5c;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .search-filters button:hover {
-            background-color: #a04848;
-        }
-        
-        .form-modifier {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-        .document-list {
-            margin-top: 20px;
-            background-color: #fff8f8;
-            padding: 15px;
-            border-radius: 5px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .document-item {
-            display: grid;
-            grid-template-columns: 2fr 2fr 1fr 1fr 1fr auto;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            align-items: center;
-        }
-        .document-item:hover {
-            background-color: #f0f0f0;
-        }
-        .button-group {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .modify-btn, .edit-btn {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 12px;
-        }
-        .delete-btn {
-            background-color: #f44336;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .modify-btn:hover, .edit-btn:hover {
-            background-color: #45a049;
-        }
-        .delete-btn:hover {
-            background-color: #da190b;
-        }
-        .message {
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        .document-header {
-            display: grid;
-            grid-template-columns: 2fr 2fr 1fr 1fr 1fr auto;
-            gap: 10px;
-            font-weight: bold;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #dee2e6;
-        }
-        .cancel-btn {
-            background-color: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-        .cancel-btn:hover {
-            background-color: #5a6268;
-        }
-        .results-count {
-            margin-bottom: 10px;
-            font-weight: bold;
-            color: #666;
-        }
-    </style>
 </head>
 <body>
     <div class="container">

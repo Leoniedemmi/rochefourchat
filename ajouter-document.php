@@ -2,7 +2,12 @@
 <?php
 // Configuration de la base de données
 require_once 'config/database.php';
-
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
 $message = '';
 $messageType = '';
 
@@ -57,26 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajouter un document - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
-    <style>
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            .sidebar {
-                width: 100%;
-                position: relative;
-            }
-            
-            .form-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .submit-btn {
-                grid-column: span 1;
-            }
-        }
-    </style>
+
 </head>
 <body>
     <div class="container">

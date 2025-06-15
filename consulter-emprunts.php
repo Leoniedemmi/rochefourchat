@@ -2,6 +2,12 @@
 // Inclure le fichier de configuration de la base de données
 require_once 'config/database.php';
 
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch(PDOException $e) {
+    die("Erreur de connexion : " . $e->getMessage());
+}
 // Initialiser les variables de filtre
 $adherent_filter = isset($_GET['adherent']) ? $_GET['adherent'] : '';
 $date_filter = isset($_GET['date']) ? $_GET['date'] : '';
@@ -109,45 +115,6 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulter les emprunts - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
-    <style>
-        .filter-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-item {
-            flex: 1;
-            min-width: 120px;
-        }
-        .filter-select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .status-active {
-            color: green;
-            font-weight: bold;
-        }
-        .status-termine {
-            color: #666;
-        }
-        .status-reserve {
-            color: #ff9500;
-            font-weight: bold;
-        }
-        .results-count {
-            margin-bottom: 15px;
-            font-style: italic;
-            color: #666;
-        }
-        .search-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
