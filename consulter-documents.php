@@ -96,10 +96,13 @@ try {
     $genres = $pdo->query("SELECT DISTINCT Genre FROM PRODUIT WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre")->fetchAll(PDO::FETCH_COLUMN);
     $dates = $pdo->query("SELECT DISTINCT SUBSTRING(Date_Parution, 1, 4) as annee FROM PRODUIT WHERE Date_Parution IS NOT NULL AND Date_Parution != '' ORDER BY annee DESC")->fetchAll(PDO::FETCH_COLUMN);
     
+    $stats_types = $pdo->query("SELECT Type, COUNT(*) as nombre FROM PRODUIT WHERE Type IS NOT NULL AND Type != '' GROUP BY Type ORDER BY Type")->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch(PDOException $e) {
     echo "Erreur : " . $e->getMessage();
     $documents = [];
     $types = $auteurs = $genres = $dates = [];
+    $stats_types = [];
 }
 ?>
 
@@ -110,31 +113,101 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulter les documents - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .filter-container {
-            display: flex;
-            gap: 10px;
+        .search-bar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
             margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .search-filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
             flex-wrap: wrap;
+            justify-content: center;
         }
-        .filter-item {
-            flex: 1;
-            min-width: 120px;
-        }
-        .filter-select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
+        
+        .search-filters input[type="text"] {
+            padding: 0.5rem;
+            width: 300px;
+            border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 14px;
         }
-        .status-disponible { color: green; font-weight: bold; }
-        .status-emprunte { color: red; font-weight: bold; }
-        .status-reserve { color: orange; font-weight: bold; }
-        .results-count {
-            margin-bottom: 15px;
+        
+        .search-filters select {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        
+        .search-filters button {
+            background-color: #b35c5c;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .search-filters button:hover {
+            background-color: #a04848;
+        }
+        
+        .search-results {
+            margin-bottom: 20px;
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .product-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #b35c5c;
+        }
+        
+        .product-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .product-author {
+            color: #666;
             font-style: italic;
+            margin-bottom: 10px;
+        }
+        
+        .product-type {
+            background-color: #b35c5c;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
             color: #666;
         }
+        
     </style>
 </head>
 <body>
@@ -161,85 +234,100 @@ try {
                 </ul>
             </nav>
         </div>
+
         <div class="content">
             <div class="header">
                 <h1>Consulter les documents</h1>
             </div>
 
             <div class="main-content">
-                <form method="GET" action="">
-                    <div class="search-box">
-                        <input type="text" name="search" placeholder="Recherche par titre, auteur ou genre..." 
-                               class="search-input" value="<?= htmlspecialchars($search) ?>">
-                        <button type="submit" class="search-btn">Rechercher</button>
-                    </div>
+                <section class="search-bar">
+                    <form method="GET" action="" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                        <div class="search-filters">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;">
+                           
+                            <select name="type" style="padding: 0.5rem;">
+                                <option value="">Tous les types</option>
+                                <?php foreach ($stats_types as $type_stat): ?>
+                                    <option value="<?= htmlspecialchars($type_stat['Type']) ?>" <?= $type_filter === $type_stat['Type'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($type_stat['Type']) ?> (<?= $type_stat['nombre'] ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
 
-                    <div class="filter-container">
-                        <div class="filter-item">
-                            <label>Type</label>
-                            <select name="type" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
-                                <?php foreach ($types as $type): ?>
-                                    <option value="<?= htmlspecialchars($type) ?>" 
-                                            <?= ($type_filter == $type) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($type) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-item">
-                            <label>Auteur</label>
-                            <select name="auteur" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
-                                <?php foreach ($auteurs as $auteur): ?>
-                                    <option value="<?= htmlspecialchars($auteur) ?>" 
-                                            <?= ($auteur_filter == $auteur) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($auteur) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="filter-item">
-                            <label>Genre</label>
-                            <select name="genre" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
+                            <select name="genre" style="padding: 0.5rem;">
+                                <option value="">Tous les genres</option>
                                 <?php foreach ($genres as $genre): ?>
-                                    <option value="<?= htmlspecialchars($genre) ?>" 
-                                            <?= ($genre_filter == $genre) ? 'selected' : '' ?>>
+                                    <option value="<?= htmlspecialchars($genre) ?>" <?= $genre_filter === $genre ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($genre) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                        
-                        <div class="filter-item">
-                            <label>Date</label>
-                            <select name="date" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Toutes</option>
+
+                            <select name="date" style="padding: 0.5rem;">
+                                <option value="">Toutes les années</option>
                                 <?php foreach ($dates as $date): ?>
-                                    <option value="<?= htmlspecialchars($date) ?>" 
-                                            <?= ($date_filter == $date) ? 'selected' : '' ?>>
+                                    <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($date) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        </div>
-                        
-                        <div class="filter-item">
-                            <label>Statut</label>
-                            <select name="statut" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
+
+                            <select name="statut" style="padding: 0.5rem;">
+                                <option value="">Tous les statuts</option>
                                 <option value="Disponible" <?= ($statut_filter == 'Disponible') ? 'selected' : '' ?>>Disponible</option>
                                 <option value="Emprunté" <?= ($statut_filter == 'Emprunté') ? 'selected' : '' ?>>Emprunté</option>
                             </select>
-                        </div>
-                    </div>
-                </form>
 
+                            <button type="submit" style="background-color: #b35c5c; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer;">
+                                <i class="fas fa-search"></i> Rechercher
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <?php if (!empty($search) || !empty($type_filter) || !empty($genre_filter) || !empty($date_filter) || !empty($statut_filter)): ?>
+                <section class="search-results">
+                    <?php if (!empty($search)): ?>
+                        <h2>Résultats de recherche pour "<?= htmlspecialchars($search) ?>"</h2>
+                    <?php else: ?>
+                        <h2>Documents filtrés</h2>
+                    <?php endif; ?>
+                    
+                    <?php if (!empty($documents)): ?>
+                        <p><?= count($documents) ?> résultat(s) trouvé(s)</p>
+                        <div class="results-grid">
+                            <?php foreach ($documents as $product): ?>
+                                <div class="product-card">
+                                    <div class="product-title"><?= htmlspecialchars($product['Titre']) ?></div>
+                                    <div class="product-author">par <?= htmlspecialchars($product['Auteur']) ?></div>
+                                    <div style="margin: 0.5rem 0;">
+                                        <span class="product-type"><?= htmlspecialchars($product['Type']) ?></span>
+                                        <span style="margin-left: 1rem; color: #666;"><?= htmlspecialchars($product['Date_Parution']) ?></span>
+                                    </div>
+                                    <div style="font-size: 0.9rem; color: #666;">
+                                        Genre: <?= htmlspecialchars($product['Genre']) ?><br>
+                                        Support: <?= htmlspecialchars($product['Support']) ?><br>
+                                        Statut: <span class="status-<?= (strpos($product['statut_formate'], 'Disponible') !== false) ? 'disponible' : 'emprunte' ?>">
+                                            <?= htmlspecialchars($product['statut_formate']) ?>
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="no-results">
+                            <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+                            <p>Aucun résultat trouvé pour votre recherche.</p>
+                            <p>Essayez avec d'autres mots-clés ou modifiez les filtres.</p>
+                        </div>
+                    <?php endif; ?>
+                </section>
+                <?php endif; ?>
+
+                <?php if (empty($search) && empty($type_filter) && empty($genre_filter) && empty($date_filter) && empty($statut_filter)): ?>
                 <div class="results-count">
-                    <?= count($documents) ?> document(s) trouvé(s)
+                    <?= count($documents) ?> document(s) au total
                 </div>
 
                 <table>
@@ -280,6 +368,7 @@ try {
                         <?php endif; ?>
                     </tbody>
                 </table>
+                <?php endif; ?>
             </div>
         </div>
     </div>

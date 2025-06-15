@@ -53,7 +53,6 @@ $topBooks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $sqlStats = "SELECT 
     COUNT(DISTINCT e.id) as total_emprunts,
-    COUNT(DISTINCT e.ADHERENT_id) as adherents_actifs,
     COUNT(DISTINCT p.id) as produits_empruntes
     FROM EMPRUNT e 
     JOIN PRODUIT p ON e.PRODUIT_id = p.id 
@@ -82,7 +81,6 @@ $types = $stmtTypes->fetchAll(PDO::FETCH_COLUMN);
     <link rel="stylesheet" href="css/style2.css">
     <title>Médiathèque de la Rochefourchet</title>
     <style>
-        /* Styles spécifiques à la page statistiques */
         .stats-container {
             display: flex;
             gap: 20px;
@@ -206,10 +204,6 @@ $types = $stmtTypes->fetchAll(PDO::FETCH_COLUMN);
                     <div class="stat-card">
                         <div class="stat-number"><?= $stats['total_emprunts'] ?></div>
                         <div class="stat-label">Total emprunts</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number"><?= $stats['adherents_actifs'] ?></div>
-                        <div class="stat-label">Adhérents actifs</div>
                     </div>
                 </div>
                 

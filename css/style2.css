@@ -173,7 +173,7 @@ h2 {
 }
 
 .form-group label {
-    display: block;
+    display: flex;
     margin-bottom: 5px;
     font-weight: bold;
 }
@@ -184,9 +184,13 @@ h2 {
     border: 1px solid #ddd;
     border-radius: 4px;
 }
+.search-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
 
-/* Styles pour les tableaux de consultation */
-.search-box {
+.search-container {
     margin-bottom: 20px;
     display: flex;
     gap: 10px;

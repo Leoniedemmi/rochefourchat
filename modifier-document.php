@@ -3,7 +3,6 @@ require_once 'config/database.php';
 $message = '';
 $messageType = '';
 
-// Traitement de la suppression
 if (isset($_POST['supprimer']) && isset($_POST['id'])) {
     try {
         $stmt = $pdo->prepare("DELETE FROM PRODUIT WHERE id = ?");
@@ -16,7 +15,6 @@ if (isset($_POST['supprimer']) && isset($_POST['id'])) {
     }
 }
 
-// Traitement de la modification
 if (isset($_POST['modifier']) && isset($_POST['id'])) {
     try {
         $stmt = $pdo->prepare("UPDATE PRODUIT SET Titre = ?, Auteur = ?, Date_Parution = ?, Genre = ?, Type = ?, nombre_exemplaires = ?, Editeur = ? WHERE id = ?");
@@ -38,22 +36,61 @@ if (isset($_POST['modifier']) && isset($_POST['id'])) {
     }
 }
 
-// Récupération des documents avec recherche
+$type_filter = isset($_GET['type']) ? $_GET['type'] : '';
+$auteur_filter = isset($_GET['auteur']) ? $_GET['auteur'] : '';
+$genre_filter = isset($_GET['genre']) ? $_GET['genre'] : '';
+$date_filter = isset($_GET['date']) ? $_GET['date'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-$whereClause = '';
-$params = [];
 
-if (!empty($search)) {
-    $whereClause = "WHERE Titre LIKE ? OR Auteur LIKE ? OR Genre LIKE ?";
-    $searchParam = "%$search%";
-    $params = [$searchParam, $searchParam, $searchParam];
+try {
+    $sql = "SELECT * FROM PRODUIT WHERE 1=1";
+    $params = [];
+    
+    if (!empty($type_filter) && $type_filter != 'Tous') {
+        $sql .= " AND Type = :type";
+        $params[':type'] = $type_filter;
+    }
+    
+    if (!empty($auteur_filter) && $auteur_filter != 'Tous') {
+        $sql .= " AND Auteur = :auteur";
+        $params[':auteur'] = $auteur_filter;
+    }
+    
+    if (!empty($genre_filter) && $genre_filter != 'Tous') {
+        $sql .= " AND Genre = :genre";
+        $params[':genre'] = $genre_filter;
+    }
+    
+    if (!empty($date_filter) && $date_filter != 'Toutes') {
+        $sql .= " AND Date_Parution LIKE :date";
+        $params[':date'] = $date_filter . '%';
+    }
+    
+    if (!empty($search)) {
+        $sql .= " AND (Titre LIKE :search OR Auteur LIKE :search OR Genre LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
+    }
+    
+    $sql .= " ORDER BY Titre";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $types = $pdo->query("SELECT DISTINCT Type FROM PRODUIT WHERE Type IS NOT NULL AND Type != '' ORDER BY Type")->fetchAll(PDO::FETCH_COLUMN);
+    $auteurs = $pdo->query("SELECT DISTINCT Auteur FROM PRODUIT WHERE Auteur IS NOT NULL AND Auteur != '' ORDER BY Auteur")->fetchAll(PDO::FETCH_COLUMN);
+    $genres = $pdo->query("SELECT DISTINCT Genre FROM PRODUIT WHERE Genre IS NOT NULL AND Genre != '' ORDER BY Genre")->fetchAll(PDO::FETCH_COLUMN);
+    $dates = $pdo->query("SELECT DISTINCT SUBSTRING(Date_Parution, 1, 4) as annee FROM PRODUIT WHERE Date_Parution IS NOT NULL AND Date_Parution != '' ORDER BY annee DESC")->fetchAll(PDO::FETCH_COLUMN);
+    
+    $stats_types = $pdo->query("SELECT Type, COUNT(*) as nombre FROM PRODUIT WHERE Type IS NOT NULL AND Type != '' GROUP BY Type ORDER BY Type")->fetchAll(PDO::FETCH_ASSOC);
+    
+} catch(PDOException $e) {
+    echo "Erreur : " . $e->getMessage();
+    $documents = [];
+    $types = $auteurs = $genres = $dates = [];
+    $stats_types = [];
 }
 
-$stmt = $pdo->prepare("SELECT * FROM PRODUIT $whereClause ORDER BY Titre");
-$stmt->execute($params);
-$documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Récupération du document sélectionné pour modification
 $selectedDocument = null;
 if (isset($_GET['edit_id'])) {
     $stmt = $pdo->prepare("SELECT * FROM PRODUIT WHERE id = ?");
@@ -69,7 +106,55 @@ if (isset($_GET['edit_id'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modifier/supprimer un document - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        .search-bar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .search-filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .search-filters input[type="text"] {
+            padding: 0.5rem;
+            width: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-filters select {
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            min-width: 150px;
+        }
+        
+        .search-filters button {
+            background-color: #b35c5c;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .search-filters button:hover {
+            background-color: #a04848;
+        }
+        
         .form-modifier {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -141,11 +226,6 @@ if (isset($_GET['edit_id'])) {
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        .search-form {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
         .document-header {
             display: grid;
             grid-template-columns: 2fr 2fr 1fr 1fr 1fr auto;
@@ -167,11 +247,15 @@ if (isset($_GET['edit_id'])) {
         .cancel-btn:hover {
             background-color: #5a6268;
         }
+        .results-count {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #666;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Menu de navigation -->
         <div class="sidebar">
             <div class="logo">
                 <h3>Admin</h3>
@@ -195,7 +279,6 @@ if (isset($_GET['edit_id'])) {
             </nav>
         </div>
 
-        <!-- Contenu principal -->
         <div class="content">
             <div class="header">
                 <h1>Modifier/supprimer un document</h1>
@@ -208,17 +291,71 @@ if (isset($_GET['edit_id'])) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Formulaire de recherche -->
-                <form method="GET" class="search-form">
-                    <input type="text" name="search" placeholder="Rechercher un document..." 
-                           class="search-input" value="<?php echo htmlspecialchars($search); ?>">
-                    <button type="submit" class="search-btn">Rechercher</button>
-                    <?php if ($search): ?>
-                        <a href="modifier-document.php" class="cancel-btn">Effacer</a>
-                    <?php endif; ?>
-                </form>
+                <section class="search-bar">
+                    <form method="GET" action="" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                        <div class="search-filters">
+                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;">
+                           
+                            <select name="type" style="padding: 0.5rem;">
+                                <option value="">Tous les types</option>
+                                <?php foreach ($stats_types as $type_stat): ?>
+                                    <option value="<?= htmlspecialchars($type_stat['Type']) ?>" <?= $type_filter === $type_stat['Type'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($type_stat['Type']) ?> (<?= $type_stat['nombre'] ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <select name="auteur" style="padding: 0.5rem;">
+                                <option value="">Tous les auteurs</option>
+                                <?php foreach ($auteurs as $auteur): ?>
+                                    <option value="<?= htmlspecialchars($auteur) ?>" <?= $auteur_filter === $auteur ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($auteur) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <select name="genre" style="padding: 0.5rem;">
+                                <option value="">Tous les genres</option>
+                                <?php foreach ($genres as $genre): ?>
+                                    <option value="<?= htmlspecialchars($genre) ?>" <?= $genre_filter === $genre ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($genre) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <select name="date" style="padding: 0.5rem;">
+                                <option value="">Toutes les années</option>
+                                <?php foreach ($dates as $date): ?>
+                                    <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($date) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <button type="submit" style="background-color: #b35c5c; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer;">
+                                <i class="fas fa-search"></i> Rechercher
+                            </button>
+                            
+                            <?php if (!empty($search) || !empty($type_filter) || !empty($auteur_filter) || !empty($genre_filter) || !empty($date_filter)): ?>
+                                <a href="modifier-document.php" class="cancel-btn" style="text-decoration: none; display: inline-block;">
+                                    <i class="fas fa-times"></i> Effacer les filtres
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <?php if (isset($_GET['edit_id'])): ?>
+                            <input type="hidden" name="edit_id" value="<?= htmlspecialchars($_GET['edit_id']) ?>">
+                        <?php endif; ?>
+                    </form>
+                </section>
                 
-                <!-- Liste des documents -->
+                <div class="results-count">
+                    <?= count($documents) ?> document(s) trouvé(s)
+                    <?php if (!empty($search) || !empty($type_filter) || !empty($auteur_filter) || !empty($genre_filter) || !empty($date_filter)): ?>
+                        avec les filtres appliqués
+                    <?php endif; ?>
+                </div>
+                
                 <div class="document-list">
                     <div class="document-header">
                         <span>Titre</span>
@@ -230,7 +367,10 @@ if (isset($_GET['edit_id'])) {
                     </div>
                     
                     <?php if (empty($documents)): ?>
-                        <p>Aucun document trouvé.</p>
+                        <p style="text-align: center; padding: 20px; color: #666;">
+                            <i class="fas fa-search" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                            Aucun document trouvé avec les critères sélectionnés.
+                        </p>
                     <?php else: ?>
                         <?php foreach ($documents as $document): ?>
                             <div class="document-item">
@@ -240,8 +380,16 @@ if (isset($_GET['edit_id'])) {
                                 <span><?php echo htmlspecialchars($document['Genre']); ?></span>
                                 <span><?php echo htmlspecialchars($document['nombre_exemplaires']); ?></span>
                                 <div style="display: flex; gap: 5px;">
-                                    <a href="?edit_id=<?php echo $document['id']; ?><?php echo $search ? '&search=' . urlencode($search) : ''; ?>" 
-                                       class="edit-btn">Modifier</a>
+                                    <?php
+                                    $editParams = ['edit_id' => $document['id']];
+                                    if (!empty($search)) $editParams['search'] = $search;
+                                    if (!empty($type_filter)) $editParams['type'] = $type_filter;
+                                    if (!empty($auteur_filter)) $editParams['auteur'] = $auteur_filter;
+                                    if (!empty($genre_filter)) $editParams['genre'] = $genre_filter;
+                                    if (!empty($date_filter)) $editParams['date'] = $date_filter;
+                                    $editUrl = '?' . http_build_query($editParams);
+                                    ?>
+                                    <a href="<?php echo $editUrl; ?>" class="edit-btn">Modifier</a>
                                     <form method="POST" style="display: inline;" 
                                           onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce document ?');">
                                         <input type="hidden" name="id" value="<?php echo $document['id']; ?>">
@@ -253,7 +401,6 @@ if (isset($_GET['edit_id'])) {
                     <?php endif; ?>
                 </div>
 
-                <!-- Formulaire de modification -->
                 <?php if ($selectedDocument): ?>
                     <div class="form-container" style="margin-top: 20px;">
                         <h3>Modifier le document : <?php echo htmlspecialchars($selectedDocument['Titre']); ?></h3>
@@ -313,8 +460,16 @@ if (isset($_GET['edit_id'])) {
                             
                             <div class="button-group">
                                 <button type="submit" name="modifier" class="modify-btn">Enregistrer les modifications</button>
-                                <a href="modifier-document.php<?php echo $search ? '?search=' . urlencode($search) : ''; ?>" 
-                                   class="cancel-btn">Annuler</a>
+                                <?php
+                                $cancelParams = [];
+                                if (!empty($search)) $cancelParams['search'] = $search;
+                                if (!empty($type_filter)) $cancelParams['type'] = $type_filter;
+                                if (!empty($auteur_filter)) $cancelParams['auteur'] = $auteur_filter;
+                                if (!empty($genre_filter)) $cancelParams['genre'] = $genre_filter;
+                                if (!empty($date_filter)) $cancelParams['date'] = $date_filter;
+                                $cancelUrl = 'modifier-document.php' . (!empty($cancelParams) ? '?' . http_build_query($cancelParams) : '');
+                                ?>
+                                <a href="<?php echo $cancelUrl; ?>" class="cancel-btn">Annuler</a>
                             </div>
                         </form>
                     </div>

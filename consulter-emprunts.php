@@ -182,48 +182,13 @@ try {
             </div>
 
             <div class="main-content">
-                <form method="GET" action="">
-                    <div class="search-box">
-                        <input type="text" name="search" placeholder="Recherche par adhérent (nom, prénom ou ID)..." 
-                               class="search-input" value="<?= htmlspecialchars($search) ?>">
-                        <button type="submit" class="search-btn">Rechercher</button>
-                    </div>
-                    <div class="search-hint">
-                        Tapez un nom, prénom ou l'ID de l'adhérent (ex: "Dupont", "Jean", ou "5")
-                    </div>
-
-                    <div class="filter-container">
-                        <div class="filter-item">
-                            <label>Date d'emprunt</label>
-                            <select name="date" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Toutes</option>
-                                <option value="Cette semaine" <?= ($date_filter == 'Cette semaine') ? 'selected' : '' ?>>Cette semaine</option>
-                                <option value="Ce mois" <?= ($date_filter == 'Ce mois') ? 'selected' : '' ?>>Ce mois</option>
-                                <option value="Ce trimestre" <?= ($date_filter == 'Ce trimestre') ? 'selected' : '' ?>>Ce trimestre</option>
-                            </select>
-                        </div>
-                        <div class="filter-item">
-                            <label>Type d'emprunt</label>
-                            <select name="type" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
-                                <?php foreach ($types as $type): ?>
-                                    <option value="<?= htmlspecialchars($type) ?>" 
-                                            <?= ($type_filter == $type) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($type) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="filter-item">
-                            <label>Statut</label>
-                            <select name="statut" class="filter-select" onchange="this.form.submit()">
-                                <option value="">Tous</option>
-                                <option value="Réservé" <?= ($statut_filter == 'Réservé') ? 'selected' : '' ?>>Réservé</option>
-                                <option value="En cours" <?= ($statut_filter == 'En cours') ? 'selected' : '' ?>>En cours</option>
-                                <option value="Terminé" <?= ($statut_filter == 'Terminé') ? 'selected' : '' ?>>Terminé</option>
-                            </select>
-                        </div>
-                    </div>
+                <form method="GET" class="search-form">
+                    <input type="text" name="search" placeholder="Rechercher par adhérent (nom, prénom ou ID)..." 
+                           class="search-input" value="<?php echo htmlspecialchars($search); ?>">
+                    <button type="submit" class="search-btn">Rechercher</button>
+                    <?php if ($search): ?>
+                        <a href="consulter-adherent.php" class="cancel-btn">Effacer</a>
+                    <?php endif; ?>
                 </form>
 
                 <div class="results-count">

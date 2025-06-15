@@ -3,46 +3,52 @@
 require_once 'config/database.php';
 
 // Initialiser les variables de filtre
-$adherent_filter = isset($_GET['adherent']) ? $_GET['adherent'] : '';
-$date_filter = isset($_GET['date']) ? $_GET['date'] : '';
-$type_filter = isset($_GET['type']) ? $_GET['type'] : '';
-$statut_filter = isset($_GET['statut']) ? $_GET['statut'] : '';
 $search = isset($_GET['search']) ? $_GET['search'] : '';
-
+$nom_filter = isset($_GET['nom']) ? $_GET['nom'] : '';
+$prenom_filter = isset($_GET['prenom']) ? $_GET['prenom'] : '';
 
 try {
     // Construire la requête SQL avec les filtres
-    $sql = "SELECT 
-                a.id,
-                a.prenom,
-                a.nom,
-                a.Mail
+    $sql = "SELECT a.*, 
+                   COUNT(e.id) as nb_emprunts_actifs,
+                   COUNT(CASE WHEN e.Date_Retour > CURDATE() THEN 1 END) as nb_emprunts_en_cours,
+                   MAX(e.Date_Emprunt) as dernier_emprunt
             FROM ADHERENT a
+            LEFT JOIN EMPRUNT e ON a.id = e.ADHERENT_id AND e.Date_Retour >= CURDATE()
             WHERE 1=1";
     
     $params = [];
     
-    // Filtrer par recherche (nom, prénom ou ID)
-    if (!empty($search)) {
-        // Vérifier si c'est un ID (numérique) ou un nom/prénom
-        if (is_numeric($search)) {
-            $sql .= " AND a.id = :adherent_id";
-            $params[':adherent_id'] = $search;
-        } else {
-            $sql .= " AND (CONCAT(a.nom, ' ', a.prenom) LIKE :search OR a.nom LIKE :search OR a.prenom LIKE :search)";
-            $params[':search'] = '%' . $search . '%';
-        }
+    // Ajouter les conditions de filtre
+    if (!empty($nom_filter) && $nom_filter != 'Tous') {
+        $sql .= " AND a.Nom = :nom";
+        $params[':nom'] = $nom_filter;
     }
     
-    $sql .= " ORDER BY a.id";
+    if (!empty($prenom_filter) && $prenom_filter != 'Tous') {
+        $sql .= " AND a.Prenom = :prenom";
+        $params[':prenom'] = $prenom_filter;
+    }
+    
+    if (!empty($search)) {
+        $sql .= " AND (a.Nom LIKE :search OR a.Prenom LIKE :search OR a.Mail LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
+    }
+    
+    $sql .= " GROUP BY a.id ORDER BY a.Nom, a.Prenom";
     
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $adherents = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // Récupérer les données pour les filtres
+    $noms = $pdo->query("SELECT DISTINCT Nom FROM ADHERENT WHERE Nom IS NOT NULL AND Nom != '' ORDER BY Nom")->fetchAll(PDO::FETCH_COLUMN);
+    $prenoms = $pdo->query("SELECT DISTINCT Prenom FROM ADHERENT WHERE Prenom IS NOT NULL AND Prenom != '' ORDER BY Prenom")->fetchAll(PDO::FETCH_COLUMN);
+    
 } catch(PDOException $e) {
     echo "Erreur : " . $e->getMessage();
     $adherents = [];
+    $noms = $prenoms = [];
 }
 ?>
 
@@ -54,15 +60,28 @@ try {
     <title>Consulter les adhérents - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
     <style>
+        
+        
         .results-count {
             margin-bottom: 15px;
             font-style: italic;
             color: #666;
         }
-        .search-hint {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+        .email-cell {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .emprunts-count {
+            text-align: center;
+            font-weight: bold;
+        }
+        .emprunts-actifs {
+            color: #e74c3c;
+        }
+        .emprunts-zero {
+            color: #27ae60;
         }
     </style>
 </head>
@@ -99,41 +118,34 @@ try {
             </div>
 
             <div class="main-content">
-                <form method="GET" action="">
-                    <div class="search-box">
-                        <input type="text" name="search" placeholder="Recherche par adhérent (nom, prénom ou ID)..." 
-                               class="search-input" value="<?= htmlspecialchars($search) ?>">
-                        <button type="submit" class="search-btn">Rechercher</button>
-                    </div>
-                    <div class="search-hint">
-                        Tapez un nom, prénom ou l'ID de l'adhérent (ex: "Dupont", "Jean", ou "5")
-                    </div>
-                </form>
+            <form method="GET" class="search-form">
+                    <input type="text" name="search" placeholder="Rechercher par adhérent (nom, prénom ou ID)..." 
+                           class="search-input" value="<?php echo htmlspecialchars($search); ?>">
+                    <button type="submit" class="search-btn">Rechercher</button>
+                    <?php if ($search): ?>
+                        <a href="consulter-adherent.php" class="cancel-btn">Effacer</a>
+                    <?php endif; ?>
+            </form>
 
                 <div class="results-count">
                     <?= count($adherents) ?> adhérent(s) trouvé(s)
-                    <?php if (!empty($search)): ?>
-                        <?php if (is_numeric($search)): ?>
-                            pour l'ID <?= htmlspecialchars($search) ?>
-                        <?php else: ?>
-                            pour "<?= htmlspecialchars($search) ?>"
-                        <?php endif; ?>
-                    <?php endif; ?>
                 </div>
 
                 <table>
                     <thead>
                         <tr>
-                            <th>Numéro</th>
-                            <th>Prénom</th>
+                            <th>ID</th>
                             <th>Nom</th>
-                            <th>Adresse mail</th>
+                            <th>Prénom</th>
+                            <th>Email</th>
+                            <th>Emprunts en cours</th>
+                            <th>Dernier emprunt</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($adherents)): ?>
                             <tr>
-                                <td colspan="4" style="text-align: center; padding: 20px; color: #666;">
+                                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">
                                     Aucun adhérent trouvé
                                 </td>
                             </tr>
@@ -141,9 +153,21 @@ try {
                             <?php foreach ($adherents as $adherent): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($adherent['id']) ?></td>
-                                    <td><?= htmlspecialchars($adherent['prenom']) ?></td>
-                                    <td><?= htmlspecialchars($adherent['nom']) ?></td>
-                                    <td><?= htmlspecialchars($adherent['Mail']) ?></td>
+                                    <td><?= htmlspecialchars($adherent['Nom']) ?></td>
+                                    <td><?= htmlspecialchars($adherent['Prenom']) ?></td>
+                                    <td class="email-cell" title="<?= htmlspecialchars($adherent['Mail']) ?>">
+                                        <?= htmlspecialchars($adherent['Mail']) ?>
+                                    </td>
+                                    <td class="emprunts-count <?= ($adherent['nb_emprunts_en_cours'] > 0) ? 'emprunts-actifs' : 'emprunts-zero' ?>">
+                                        <?= htmlspecialchars($adherent['nb_emprunts_en_cours']) ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($adherent['dernier_emprunt']): ?>
+                                            <?= date('d/m/Y', strtotime($adherent['dernier_emprunt'])) ?>
+                                        <?php else: ?>
+                                            <span style="color: #999;">Aucun emprunt</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
