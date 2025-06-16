@@ -1,14 +1,18 @@
 <?php
-
-$host = '192.168.135.113';
-$dbname = 'sonzinie';
-$username = 'user'; 
-$password = 'rQUSxP2xUCxnzU45';     
+// Configuration pour OVH - remplacez par vos vraies informations OVH
+$host = 'ijtebowmandevillel.mysql.db'; // Ex: mysql51-66.pro ou cluster015.hosting.ovh.net
+$dbname = 'ijtebowmandevill';
+$username = 'ijtebowmandevill'; // Votre nom d'utilisateur OVH
+$password = 'rQUSxP2xUCxnzU45';
 
 try {
-    $pdo = new PDO('mysql:host=mysql-ijtebowmandevill.mysql.db', 'user', 'pass');
+    // Correction de la variable $host dans la chaîne de connexion
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    
+    echo "Connexion réussie !";
+    
 } catch(PDOException $e) {
     die("Erreur de connexion à la base de données : " . $e->getMessage());
 }
