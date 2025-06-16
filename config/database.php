@@ -1,9 +1,9 @@
 <?php
 // Configuration pour OVH - remplacez par vos vraies informations OVH
-$host = 'ijtebowmandevillel.mysql.db'; // Ex: mysql51-66.pro ou cluster015.hosting.ovh.net
+$host = 'ijtebowmandevill.mysql.db'; // Ex: mysql51-66.pro ou cluster015.hosting.ovh.net
 $dbname = 'ijtebowmandevill';
 $username = 'ijtebowmandevill'; // Votre nom d'utilisateur OVH
-$password = 'rQUSxP2xUCxnzU45';
+$password = 'LeonieMANDEVILLE2025';
 
 try {
     // Correction de la variable $host dans la chaîne de connexion
