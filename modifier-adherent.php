@@ -221,7 +221,6 @@ if (isset($_GET['edit_id'])) {
                            class="search-input" value="<?php echo htmlspecialchars($search); ?>">
                     <button type="submit" class="search-btn">Rechercher</button>
                     <?php if ($search): ?>
-                        <a href="modifier-adherent.php" class="cancel-btn">Effacer</a>
                     <?php endif; ?>
                 </form>
                 
