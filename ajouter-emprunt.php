@@ -24,8 +24,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $adherent_id = null;
             
-            // Chercher d'abord si l'adhérent existe dans la base (avec les bons noms de colonnes)
-            $adherent_sql = "SELECT id FROM adherent WHERE CONCAT(Nom, ' ', Prenom) LIKE :nom_adherent OR Nom LIKE :nom_adherent OR Prenom LIKE :nom_adherent LIMIT 1";
+            // Chercher d'abord si l'adhérent existe dans la base (CORRECTION: ADHERENT au lieu de adherent)
+            $adherent_sql = "SELECT id FROM ADHERENT WHERE CONCAT(Nom, ' ', Prenom) LIKE :nom_adherent OR Nom LIKE :nom_adherent OR Prenom LIKE :nom_adherent LIMIT 1";
             $adherent_stmt = $pdo->prepare($adherent_sql);
             $adherent_stmt->execute([':nom_adherent' => '%' . $nom_adherent . '%']);
             $adherent = $adherent_stmt->fetch(PDO::FETCH_ASSOC);
@@ -35,8 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $adherent_id = $adherent['id'];
                 
-                // Chercher le document par titre et type (avec les bons noms de colonnes)
-                $document_sql = "SELECT id FROM produit WHERE Titre LIKE :titre AND Type = :type LIMIT 1";
+                // Chercher le document par titre et type (CORRECTION: PRODUIT au lieu de produit)
+                $document_sql = "SELECT id FROM PRODUIT WHERE Titre LIKE :titre AND Type = :type LIMIT 1";
                 $document_stmt = $pdo->prepare($document_sql);
                 $document_stmt->execute([
                     ':titre' => '%' . $titre_document . '%',
@@ -50,16 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Récupérer l'ID du document
                     $document_id = $document['id'];
                     
-                    // Vérifier si le document n'est pas déjà emprunté (avec les bons noms de colonnes)
-                    $check_emprunt_sql = "SELECT COUNT(*) FROM emprunt WHERE PRODUIT_id = :document_id AND Date_Retour IS NULL";
+                    // Vérifier si le document n'est pas déjà emprunté (CORRECTION: EMPRUNT au lieu de emprunt)
+                    $check_emprunt_sql = "SELECT COUNT(*) FROM EMPRUNT WHERE PRODUIT_id = :document_id AND Date_Retour IS NULL";
                     $check_emprunt_stmt = $pdo->prepare($check_emprunt_sql);
                     $check_emprunt_stmt->execute([':document_id' => $document_id]);
 
                     if ($check_emprunt_stmt->fetchColumn() > 0) {
                         $error = "Ce document est déjà emprunté et n'a pas encore été retourné.";
                     } else {
-                        // Insérer le nouvel emprunt (avec les bons noms de colonnes)
-                        $sql = "INSERT INTO emprunt (ADHERENT_id, PRODUIT_id, Date_Emprunt, Date_Retour) 
+                        // Insérer le nouvel emprunt (CORRECTION: EMPRUNT au lieu de emprunt)
+                        $sql = "INSERT INTO EMPRUNT (ADHERENT_id, PRODUIT_id, Date_Emprunt, Date_Retour) 
                                 VALUES (:adherent_id, :document_id, :date_emprunt, :date_retour)";
                         $stmt = $pdo->prepare($sql);
                         $stmt->execute([
