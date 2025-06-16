@@ -1,52 +1,81 @@
 <?php
 require_once 'config/database.php';
-
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     die("Erreur de connexion : " . $e->getMessage());
 }
-$adherent_filter = isset($_GET['adherent']) ? $_GET['adherent'] : '';
-$date_filter = isset($_GET['date']) ? $_GET['date'] : '';
-$type_filter = isset($_GET['type']) ? $_GET['type'] : '';
-$statut_filter = isset($_GET['statut']) ? $_GET['statut'] : '';
-$search = isset($_GET['search']) ? $_GET['search'] : '';
-
 // Traitement du formulaire
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nom = trim($_POST['nom']);
-    $prenom = trim($_POST['prenom']);
-    $email = trim($_POST['Mail']);
+    $nom_adherent = trim($_POST['nom_adherent']);
+    $titre_document = trim($_POST['titre_document']);
+    $type_document = trim($_POST['type_document']);
+    $date_emprunt = trim($_POST['date_emprunt']);
+    $date_retour = trim($_POST['date_retour']);
+    $reserve = isset($_POST['reserve']) ? 1 : 0;
 
     // Validation des champs
-    if (empty($nom) || empty($prenom) || empty($email)) {
+    if (empty($nom_adherent) || empty($titre_document) || empty($type_document) || empty($date_emprunt) || empty($date_retour)) {
         $error = "Tous les champs sont obligatoires.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "L'adresse email n'est pas valide.";
+    } elseif (strtotime($date_retour) <= strtotime($date_emprunt)) {
+        $error = "La date de retour doit être postérieure à la date d'emprunt.";
     } else {
         try {
-            // Vérifier si l'email existe déjà
-            $check_sql = "SELECT COUNT(*) FROM ADHERENT WHERE Mail = :email";
-            $check_stmt = $pdo->prepare($check_sql);
-            $check_stmt->execute([':email' => $email]);
+            $adherent_id = null;
+            
+            // Chercher d'abord si l'adhérent existe dans la base
+            $adherent_sql = "SELECT id FROM ADHERENT WHERE CONCAT(Nom, ' ', Prenom) LIKE :nom_adherent OR Nom LIKE :nom_adherent OR Prenom LIKE :nom_adherent LIMIT 1";
+            $adherent_stmt = $pdo->prepare($adherent_sql);
+            $adherent_stmt->execute([':nom_adherent' => '%' . $nom_adherent . '%']);
+            $adherent = $adherent_stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($check_stmt->fetchColumn() > 0) {
-                $error = "Un adhérent avec cette adresse email existe déjà.";
+            if (!$adherent) {
+                $error = "Aucun adhérent trouvé avec ce nom. Veuillez d'abord l'ajouter dans la section 'Ajouter un adhérent'.";
             } else {
-                // Insérer le nouvel adhérent (l'ID sera généré automatiquement)
-                $sql = "INSERT INTO ADHERENT (nom, prenom, Mail) VALUES (:nom, :prenom, :email)";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    ':nom' => $nom,
-                    ':prenom' => $prenom,
-                    ':email' => $email
+                $adherent_id = $adherent['id'];
+                
+                // Chercher le document par titre et type
+                $document_sql = "SELECT id FROM PRODUIT WHERE Titre LIKE :titre AND Type = :type LIMIT 1";
+                $document_stmt = $pdo->prepare($document_sql);
+                $document_stmt->execute([
+                    ':titre' => '%' . $titre_document . '%',
+                    ':type' => $type_document
                 ]);
+                $document = $document_stmt->fetch(PDO::FETCH_ASSOC);
 
-                $message = "L'adhérent a été ajouté avec succès !";
+                if (!$document) {
+                    $error = "Aucun document trouvé avec ce titre et ce type.";
+                } else {
+                    // Récupérer l'ID du document
+                    $document_id = $document['id'];
+                    
+                    // Vérifier si le document n'est pas déjà emprunté
+                    $check_emprunt_sql = "SELECT COUNT(*) FROM EMPRUNT WHERE PRODUIT_id = :document_id AND Date_Retour IS NULL";
+                    $check_emprunt_stmt = $pdo->prepare($check_emprunt_sql);
+                    $check_emprunt_stmt->execute([':document_id' => $document_id]);
 
-                // Réinitialiser les champs
-                $nom = $prenom = $email = '';
+                    if ($check_emprunt_stmt->fetchColumn() > 0) {
+                        $error = "Ce document est déjà emprunté et n'a pas encore été retourné.";
+                    } else {
+                        // Insérer le nouvel emprunt
+                        $sql = "INSERT INTO EMPRUNT (ADHERENT_id, PRODUIT_id, Date_Emprunt, Date_Retour) 
+                                VALUES (:adherent_id, :document_id, :date_emprunt, :date_retour)";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([
+                            ':adherent_id' => $adherent_id,
+                            ':document_id' => $document_id,
+                            ':date_emprunt' => $date_emprunt,
+                            ':date_retour' => $date_retour
+                        ]);
+
+                        $message = "L'emprunt a été ajouté avec succès !";
+
+                        // Réinitialiser les champs
+                        $nom_adherent = $titre_document = $type_document = $date_emprunt = $date_retour = '';
+                        $reserve = 0;
+                    }
+                }
             }
         } catch(PDOException $e) {
             $error = "Erreur lors de l'ajout : " . $e->getMessage();
@@ -60,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ajouter un adhérent - Médiathèque de la Rochefourchet</title>
+    <title>Ajouter un emprunt - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
 </head>
 <body>
@@ -92,11 +121,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <!-- Contenu principal -->
         <div class="content">
             <div class="header">
-                <h1>Ajouter un adhérent</h1>
+                <h1>Ajouter un emprunt</h1>
             </div>
 
             <div class="main-content">
-                <form class="form-adherent" method="POST" action="">
+                <form class="form-emprunt" method="POST" action="">
                     <?php if (!empty($message)): ?>
                         <div class="message success"><?= htmlspecialchars($message) ?></div>
                     <?php endif; ?>
@@ -106,26 +135,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
                     
                     <div class="form-group">
-                        <label for="nom">Nom *</label>
-                        <input type="text" id="nom" name="nom" class="form-control" value="<?= htmlspecialchars($nom ?? '') ?>" required>
+                        <label for="nom_adherent">Nom de l'adhérent *</label>
+                        <input type="text" id="nom_adherent" name="nom_adherent" class="form-control" 
+                               value="<?= htmlspecialchars($nom_adherent ?? '') ?>" 
+                               placeholder="Tapez le nom ou prénom" required>
+                        <div class="form-hint">Exemple: "Dupont" ou "Jean"</div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="prenom">Prénom *</label>
-                        <input type="text" id="prenom" name="prenom" class="form-control" value="<?= htmlspecialchars($prenom ?? '') ?>" required>
+                        <label for="titre_document">Titre du document *</label>
+                        <input type="text" id="titre_document" name="titre_document" class="form-control" 
+                               value="<?= htmlspecialchars($titre_document ?? '') ?>" 
+                               placeholder="Tapez le titre du document" required>
+                        <div class="form-hint">Exemple: "Le Seigneur des Anneaux"</div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="Mail">Email *</label>
-                        <input type="email" id="Mail" name="Mail" class="form-control" value="<?= htmlspecialchars($email ?? '') ?>" required>
+                        <label for="type_document">Type de document *</label>
+                        <select id="type_document" name="type_document" class="form-control" required>
+                            <option value="">Sélectionner un type</option>
+                            <option value="Livre" <?= (isset($type_document) && $type_document == 'Livre') ? 'selected' : '' ?>>Livre</option>
+                            <option value="DVD" <?= (isset($type_document) && $type_document == 'DVD') ? 'selected' : '' ?>>DVD</option>
+                            <option value="CD" <?= (isset($type_document) && $type_document == 'CD') ? 'selected' : '' ?>>CD</option>
+                            <option value="Cassette audio" <?= (isset($type_document) && $type_document == 'Cassette audio') ? 'selected' : '' ?>>Cassette audio</option>
+                            <option value="VHS" <?= (isset($type_document) && $type_document == 'VHS') ? 'selected' : '' ?>>VHS</option>
+                            <option value="Vinyle" <?= (isset($type_document) && $type_document == 'Vinyle') ? 'selected' : '' ?>>Vinyle</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_emprunt">Date d'emprunt *</label>
+                        <input type="date" id="date_emprunt" name="date_emprunt" class="form-control" 
+                               value="<?= htmlspecialchars($date_emprunt ?? date('Y-m-d')) ?>" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_retour">Date de retour prévue *</label>
+                        <input type="date" id="date_retour" name="date_retour" class="form-control" 
+                               value="<?= htmlspecialchars($date_retour ?? date('Y-m-d', strtotime('+2 weeks'))) ?>" required>
                     </div>
                     
                     <div class="btn-container">
-                        <button type="submit" class="submit-btn">Ajouter l'adhérent</button>
+                        <button type="submit" class="submit-btn">Ajouter l'emprunt</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        // Auto-calculer la date de retour (2 semaines après la date d'emprunt)
+        document.getElementById('date_emprunt').addEventListener('change', function() {
+            const dateEmprunt = new Date(this.value);
+            if (dateEmprunt) {
+                const dateRetour = new Date(dateEmprunt);
+                dateRetour.setDate(dateRetour.getDate() + 14); // Ajouter 2 semaines
+                
+                const year = dateRetour.getFullYear();
+                const month = String(dateRetour.getMonth() + 1).padStart(2, '0');
+                const day = String(dateRetour.getDate()).padStart(2, '0');
+                
+                document.getElementById('date_retour').value = `${year}-${month}-${day}`;
+            }
+        });
+    </script>
 </body>
 </html>
