@@ -1,60 +1,86 @@
 <?php
-// Inclure le fichier de configuration de la base de données
 require_once 'config/database.php';
-
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     die("Erreur de connexion : " . $e->getMessage());
 }
-// Initialiser les variables de filtre
-$search = isset($_GET['search']) ? $_GET['search'] : '';
-$nom_filter = isset($_GET['nom']) ? $_GET['nom'] : '';
-$prenom_filter = isset($_GET['prenom']) ? $_GET['prenom'] : '';
+// Traitement du formulaire
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nom_adherent = trim($_POST['nom_adherent']);
+    $titre_document = trim($_POST['titre_document']);
+    $type_document = trim($_POST['type_document']);
+    $date_emprunt = trim($_POST['date_emprunt']);
+    $date_retour = trim($_POST['date_retour']);
+    $reserve = isset($_POST['reserve']) ? 1 : 0;
 
-try {
-    // Construire la requête SQL avec les filtres
-    $sql = "SELECT a.*, 
-                   COUNT(e.id) as nb_emprunts_actifs,
-                   COUNT(CASE WHEN e.Date_Retour > CURDATE() THEN 1 END) as nb_emprunts_en_cours,
-                   MAX(e.Date_Emprunt) as dernier_emprunt
-            FROM ADHERENT a
-            LEFT JOIN EMPRUNT e ON a.id = e.ADHERENT_id AND e.Date_Retour >= CURDATE()
-            WHERE 1=1";
-    
-    $params = [];
-    
-    // Ajouter les conditions de filtre
-    if (!empty($nom_filter) && $nom_filter != 'Tous') {
-        $sql .= " AND a.Nom = :nom";
-        $params[':nom'] = $nom_filter;
+    // Validation des champs
+    if (empty($nom_adherent) || empty($titre_document) || empty($type_document) || empty($date_emprunt) || empty($date_retour)) {
+        $error = "Tous les champs sont obligatoires.";
+    } elseif (strtotime($date_retour) <= strtotime($date_emprunt)) {
+        $error = "La date de retour doit être postérieure à la date d'emprunt.";
+    } else {
+        try {
+            $adherent_id = null;
+            
+            // Chercher d'abord si l'adhérent existe dans la base
+            $adherent_sql = "SELECT id FROM ADHERENT WHERE CONCAT(Nom, ' ', Prenom) LIKE :nom_adherent OR Nom LIKE :nom_adherent OR Prenom LIKE :nom_adherent LIMIT 1";
+            $adherent_stmt = $pdo->prepare($adherent_sql);
+            $adherent_stmt->execute([':nom_adherent' => '%' . $nom_adherent . '%']);
+            $adherent = $adherent_stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$adherent) {
+                $error = "Aucun adhérent trouvé avec ce nom. Veuillez d'abord l'ajouter dans la section 'Ajouter un adhérent'.";
+            } else {
+                $adherent_id = $adherent['id'];
+                
+                // Chercher le document par titre et type
+                $document_sql = "SELECT id FROM PRODUIT WHERE Titre LIKE :titre AND Type = :type LIMIT 1";
+                $document_stmt = $pdo->prepare($document_sql);
+                $document_stmt->execute([
+                    ':titre' => '%' . $titre_document . '%',
+                    ':type' => $type_document
+                ]);
+                $document = $document_stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$document) {
+                    $error = "Aucun document trouvé avec ce titre et ce type.";
+                } else {
+                    // Récupérer l'ID du document
+                    $document_id = $document['id'];
+                    
+                    // Vérifier si le document n'est pas déjà emprunté
+                    $check_emprunt_sql = "SELECT COUNT(*) FROM EMPRUNT WHERE PRODUIT_id = :document_id AND Date_Retour IS NULL";
+                    $check_emprunt_stmt = $pdo->prepare($check_emprunt_sql);
+                    $check_emprunt_stmt->execute([':document_id' => $document_id]);
+
+                    if ($check_emprunt_stmt->fetchColumn() > 0) {
+                        $error = "Ce document est déjà emprunté et n'a pas encore été retourné.";
+                    } else {
+                        // Insérer le nouvel emprunt
+                        $sql = "INSERT INTO EMPRUNT (ADHERENT_id, PRODUIT_id, Date_Emprunt, Date_Retour) 
+                                VALUES (:adherent_id, :document_id, :date_emprunt, :date_retour)";
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute([
+                            ':adherent_id' => $adherent_id,
+                            ':document_id' => $document_id,
+                            ':date_emprunt' => $date_emprunt,
+                            ':date_retour' => $date_retour
+                        ]);
+
+                        $message = "L'emprunt a été ajouté avec succès !";
+
+                        // Réinitialiser les champs
+                        $nom_adherent = $titre_document = $type_document = $date_emprunt = $date_retour = '';
+                        $reserve = 0;
+                    }
+                }
+            }
+        } catch(PDOException $e) {
+            $error = "Erreur lors de l'ajout : " . $e->getMessage();
+        }
     }
-    
-    if (!empty($prenom_filter) && $prenom_filter != 'Tous') {
-        $sql .= " AND a.Prenom = :prenom";
-        $params[':prenom'] = $prenom_filter;
-    }
-    
-    if (!empty($search)) {
-        $sql .= " AND (a.Nom LIKE :search OR a.Prenom LIKE :search OR a.Mail LIKE :search)";
-        $params[':search'] = '%' . $search . '%';
-    }
-    
-    $sql .= " GROUP BY a.id ORDER BY a.Nom, a.Prenom";
-    
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $adherents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    // Récupérer les données pour les filtres
-    $noms = $pdo->query("SELECT DISTINCT Nom FROM ADHERENT WHERE Nom IS NOT NULL AND Nom != '' ORDER BY Nom")->fetchAll(PDO::FETCH_COLUMN);
-    $prenoms = $pdo->query("SELECT DISTINCT Prenom FROM ADHERENT WHERE Prenom IS NOT NULL AND Prenom != '' ORDER BY Prenom")->fetchAll(PDO::FETCH_COLUMN);
-    
-} catch(PDOException $e) {
-    echo "Erreur : " . $e->getMessage();
-    $adherents = [];
-    $noms = $prenoms = [];
 }
 ?>
 
@@ -63,7 +89,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulter les adhérents - Médiathèque de la Rochefourchet</title>
+    <title>Ajouter un emprunt - Médiathèque de la Rochefourchet</title>
     <link rel="stylesheet" href="css/style2.css">
 </head>
 <body>
@@ -71,20 +97,20 @@ try {
         <!-- Menu de navigation -->
         <div class="sidebar">
             <div class="logo">
-                <h3>Admin</h3>
+               <h3>Admin</h3>
             </div>
             <nav class="menu">
                 <ul>
                     <li><a href="index.php" <?= (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'style="color: #442424;"' : '' ?>>Statistiques</a></li>
-                    <br><br>
+                    <li class="separator"></li>
                     <li><a href="consulter-documents.php" <?= (basename($_SERVER['PHP_SELF']) == 'consulter-documents.php') ? 'style="color: #442424;"' : '' ?>>Consulter les documents</a></li>
                     <li><a href="ajouter-document.php" <?= (basename($_SERVER['PHP_SELF']) == 'ajouter-document.php') ? 'style="color: #442424;"' : '' ?>>Ajouter un document</a></li>
                     <li><a href="modifier-document.php" <?= (basename($_SERVER['PHP_SELF']) == 'modifier-document.php') ? 'style="color: #442424;"' : '' ?>>Modifier/supprimer un document</a></li>
-                    <br><br>
+                    <li class="separator"></li>
                     <li><a href="consulter-adherents.php" <?= (basename($_SERVER['PHP_SELF']) == 'consulter-adherents.php') ? 'style="color: #442424;"' : '' ?>>Consulter les adhérents</a></li>
                     <li><a href="ajouter-adherent.php" <?= (basename($_SERVER['PHP_SELF']) == 'ajouter-adherent.php') ? 'style="color: #442424;"' : '' ?>>Ajouter un adhérent</a></li>
                     <li><a href="modifier-adherent.php" <?= (basename($_SERVER['PHP_SELF']) == 'modifier-adherent.php') ? 'style="color: #442424;"' : '' ?>>Modifier/supprimer un adhérent</a></li>
-                    <br><br>
+                    <li class="separator"></li>
                     <li><a href="consulter-emprunts.php" <?= (basename($_SERVER['PHP_SELF']) == 'consulter-emprunts.php') ? 'style="color: #442424;"' : '' ?>>Consulter les emprunts</a></li>
                     <li><a href="ajouter-emprunt.php" <?= (basename($_SERVER['PHP_SELF']) == 'ajouter-emprunt.php') ? 'style="color: #442424;"' : '' ?>>Ajouter un emprunt</a></li>
                     <li><a href="modifier-emprunt.php" <?= (basename($_SERVER['PHP_SELF']) == 'modifier-emprunt.php') ? 'style="color: #442424;"' : '' ?>>Modifier/supprimer un emprunt</a></li>
@@ -95,66 +121,83 @@ try {
         <!-- Contenu principal -->
         <div class="content">
             <div class="header">
-                <h1>Consulter les adhérents</h1>
+                <h1>Ajouter un emprunt</h1>
             </div>
 
             <div class="main-content">
-            <form method="GET" class="search-form">
-                    <input type="text" name="search" placeholder="Rechercher par adhérent (nom, prénom ou ID)..." 
-                           class="search-input" value="<?php echo htmlspecialchars($search); ?>">
-                    <button type="submit" class="search-btn">Rechercher</button>
-                    <?php if ($search): ?>
+                <form class="form-emprunt" method="POST">
+                    <?php if (!empty($message)): ?>
+                        <div class="message success"><?= htmlspecialchars($message) ?></div>
                     <?php endif; ?>
-            </form>
-
-                <div class="results-count">
-                    <?= count($adherents) ?> adhérent(s) trouvé(s)
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nom</th>
-                            <th>Prénom</th>
-                            <th>Email</th>
-                            <th>Emprunts en cours</th>
-                            <th>Dernier emprunt</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($adherents)): ?>
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 20px; color: #666;">
-                                    Aucun adhérent trouvé
-                                </td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($adherents as $adherent): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($adherent['id']) ?></td>
-                                    <td><?= htmlspecialchars($adherent['Nom']) ?></td>
-                                    <td><?= htmlspecialchars($adherent['Prenom']) ?></td>
-                                    <td class="email-cell" title="<?= htmlspecialchars($adherent['Mail']) ?>">
-                                        <?= htmlspecialchars($adherent['Mail']) ?>
-                                    </td>
-                                    <td class="emprunts-count <?= ($adherent['nb_emprunts_en_cours'] > 0) ? 'emprunts-actifs' : 'emprunts-zero' ?>">
-                                        <?= htmlspecialchars($adherent['nb_emprunts_en_cours']) ?>
-                                    </td>
-                                    <td>
-                                        <?php if ($adherent['dernier_emprunt']): ?>
-                                            <?= date('d/m/Y', strtotime($adherent['dernier_emprunt'])) ?>
-                                        <?php else: ?>
-                                            <span style="color: #999;">Aucun emprunt</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                    
+                    <?php if (!empty($error)): ?>
+                        <div class="message error"><?= htmlspecialchars($error) ?></div>
+                    <?php endif; ?>
+                    
+                    <div class="form-group">
+                        <label for="nom_adherent">Nom de l'adhérent *</label>
+                        <input type="text" id="nom_adherent" name="nom_adherent" class="form-control" 
+                               value="<?= htmlspecialchars($nom_adherent ?? '') ?>" 
+                               placeholder="Tapez le nom ou prénom" required>
+                        <div class="form-hint">Exemple: "Dupont" ou "Jean"</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="titre_document">Titre du document *</label>
+                        <input type="text" id="titre_document" name="titre_document" class="form-control" 
+                               value="<?= htmlspecialchars($titre_document ?? '') ?>" 
+                               placeholder="Tapez le titre du document" required>
+                        <div class="form-hint">Exemple: "Le Seigneur des Anneaux"</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="type_document">Type de document *</label>
+                        <select id="type_document" name="type_document" class="form-control" required>
+                            <option value="">Sélectionner un type</option>
+                            <option value="Livre" <?= (isset($type_document) && $type_document == 'Livre') ? 'selected' : '' ?>>Livre</option>
+                            <option value="DVD" <?= (isset($type_document) && $type_document == 'DVD') ? 'selected' : '' ?>>DVD</option>
+                            <option value="CD" <?= (isset($type_document) && $type_document == 'CD') ? 'selected' : '' ?>>CD</option>
+                            <option value="Cassette audio" <?= (isset($type_document) && $type_document == 'Cassette audio') ? 'selected' : '' ?>>Cassette audio</option>
+                            <option value="VHS" <?= (isset($type_document) && $type_document == 'VHS') ? 'selected' : '' ?>>VHS</option>
+                            <option value="Vinyle" <?= (isset($type_document) && $type_document == 'Vinyle') ? 'selected' : '' ?>>Vinyle</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_emprunt">Date d'emprunt *</label>
+                        <input type="date" id="date_emprunt" name="date_emprunt" class="form-control" 
+                               value="<?= htmlspecialchars($date_emprunt ?? date('Y-m-d')) ?>" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="date_retour">Date de retour prévue *</label>
+                        <input type="date" id="date_retour" name="date_retour" class="form-control" 
+                               value="<?= htmlspecialchars($date_retour ?? date('Y-m-d', strtotime('+2 weeks'))) ?>" required>
+                    </div>
+                    
+                    <div class="btn-container">
+                        <button type="submit" class="submit-btn">Ajouter l'emprunt</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+
+    <script>
+        // Auto-calculer la date de retour (2 semaines après la date d'emprunt)
+        document.getElementById('date_emprunt').addEventListener('change', function() {
+            const dateEmprunt = new Date(this.value);
+            if (dateEmprunt) {
+                const dateRetour = new Date(dateEmprunt);
+                dateRetour.setDate(dateRetour.getDate() + 14); // Ajouter 2 semaines
+                
+                const year = dateRetour.getFullYear();
+                const month = String(dateRetour.getMonth() + 1).padStart(2, '0');
+                const day = String(dateRetour.getDate()).padStart(2, '0');
+                
+                document.getElementById('date_retour').value = `${year}-${month}-${day}`;
+            }
+        });
+    </script>
 </body>
 </html>
