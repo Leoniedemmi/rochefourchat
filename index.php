@@ -175,7 +175,7 @@ $types = $stmtTypes->fetchAll(PDO::FETCH_COLUMN);
                                     <li>
                                         <span class="book-title"><?= htmlspecialchars($book['Titre']) ?></span> - 
                                         <span class="book-author"><?= htmlspecialchars($book['Auteur']) ?></span>
-                                        <span style="color: #CE6A6B; font-weight: bold; float: right;"><?= $book['nb_emprunts'] ?> emprunts</span>
+                                        <span style="color: #8B0000; font-weight: bold; float: right;"><?= $book['nb_emprunts'] ?> emprunts</span>
                                     </li>
                                 <?php endforeach; ?>
                             <?php else: ?>

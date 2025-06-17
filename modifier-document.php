@@ -156,9 +156,11 @@ if (isset($_GET['edit_id'])) {
                 <section class="search-bar">
                     <form method="GET" action="modifier-document.php" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
                         <div class="search-filters">
-                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;">
+                            <label for="search_input">Recherche :</label>
+                            <input type="text" id="search_input" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;" title="Rechercher par titre, auteur ou genre">
                            
-                            <select name="type" style="padding: 0.5rem;">
+                            <label for="type_select">Type :</label>
+                            <select id="type_select" name="type" style="padding: 0.5rem;" title="Filtrer par type de document">
                                 <option value="">Tous les types</option>
                                 <?php foreach ($stats_types as $type_stat): ?>
                                     <option value="<?= htmlspecialchars($type_stat['Type']) ?>" <?= $type_filter === $type_stat['Type'] ? 'selected' : '' ?>>
@@ -167,7 +169,8 @@ if (isset($_GET['edit_id'])) {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="auteur" style="padding: 0.5rem;">
+                            <label for="auteur_select">Auteur :</label>
+                            <select id="auteur_select" name="auteur" style="padding: 0.5rem;" title="Filtrer par auteur">
                                 <option value="">Tous les auteurs</option>
                                 <?php foreach ($auteurs as $auteur): ?>
                                     <option value="<?= htmlspecialchars($auteur) ?>" <?= $auteur_filter === $auteur ? 'selected' : '' ?>>
@@ -176,7 +179,8 @@ if (isset($_GET['edit_id'])) {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="genre" style="padding: 0.5rem;">
+                            <label for="genre_select">Genre :</label>
+                            <select id="genre_select" name="genre" style="padding: 0.5rem;" title="Filtrer par genre">
                                 <option value="">Tous les genres</option>
                                 <?php foreach ($genres as $genre): ?>
                                     <option value="<?= htmlspecialchars($genre) ?>" <?= $genre_filter === $genre ? 'selected' : '' ?>>
@@ -185,7 +189,8 @@ if (isset($_GET['edit_id'])) {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="date" style="padding: 0.5rem;">
+                            <label for="date_select">Année :</label>
+                            <select id="date_select" name="date" style="padding: 0.5rem;" title="Filtrer par année de parution">
                                 <option value="">Toutes les années</option>
                                 <?php foreach ($dates as $date): ?>
                                     <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
@@ -195,12 +200,12 @@ if (isset($_GET['edit_id'])) {
                             </select>
 
                             <button type="submit" style="background-color: #b35c5c; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer;">
-                                <i class="fas fa-search"></i> Rechercher
+                                <span class="fas fa-search" aria-hidden="true"></span> Rechercher
                             </button>
                             
                             <?php if (!empty($search) || !empty($type_filter) || !empty($auteur_filter) || !empty($genre_filter) || !empty($date_filter)): ?>
                                 <a href="modifier-document.php" class="cancel-btn" style="text-decoration: none; display: inline-block;">
-                                    <i class="fas fa-times"></i> Effacer les filtres
+                                    <span class="fas fa-times" aria-hidden="true"></span> Effacer les filtres
                                 </a>
                             <?php endif; ?>
                         </div>
@@ -230,7 +235,7 @@ if (isset($_GET['edit_id'])) {
                     
                     <?php if (empty($documents)): ?>
                         <p style="text-align: center; padding: 20px; color: #666;">
-                            <i class="fas fa-search" style="font-size: 2rem; display: block; margin-bottom: 10px;"></i>
+                            <span class="fas fa-search" style="font-size: 2rem; display: block; margin-bottom: 10px;" aria-hidden="true"></span>
                             Aucun document trouvé avec les critères sélectionnés.
                         </p>
                     <?php else: ?>

@@ -155,9 +155,11 @@ try {
                 <section class="search-bar">
                     <form method="GET" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
                         <div class="search-filters">
-                            <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;">
+                            <label for="search" style="display: none;">Recherche</label>
+                            <input type="text" id="search" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher par titre, auteur ou genre..." style="padding: 0.5rem; width: 300px; border: 1px solid #ccc;">
                            
-                            <select name="type" style="padding: 0.5rem;">
+                            <label for="type" style="display: none;">Type de document</label>
+                            <select id="type" name="type" style="padding: 0.5rem;">
                                 <option value="">Tous les types</option>
                                 <?php foreach ($stats_types as $type_stat): ?>
                                     <option value="<?= htmlspecialchars($type_stat['Type']) ?>" <?= $type_filter === $type_stat['Type'] ? 'selected' : '' ?>>
@@ -166,7 +168,8 @@ try {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="genre" style="padding: 0.5rem;">
+                            <label for="genre" style="display: none;">Genre</label>
+                            <select id="genre" name="genre" style="padding: 0.5rem;">
                                 <option value="">Tous les genres</option>
                                 <?php foreach ($genres as $genre): ?>
                                     <option value="<?= htmlspecialchars($genre) ?>" <?= $genre_filter === $genre ? 'selected' : '' ?>>
@@ -175,7 +178,8 @@ try {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="date" style="padding: 0.5rem;">
+                            <label for="date" style="display: none;">Année de parution</label>
+                            <select id="date" name="date" style="padding: 0.5rem;">
                                 <option value="">Toutes les années</option>
                                 <?php foreach ($dates as $date): ?>
                                     <option value="<?= htmlspecialchars($date) ?>" <?= $date_filter === $date ? 'selected' : '' ?>>
@@ -184,7 +188,8 @@ try {
                                 <?php endforeach; ?>
                             </select>
 
-                            <select name="statut" style="padding: 0.5rem;">
+                            <label for="statut" style="display: none;">Statut</label>
+                            <select id="statut" name="statut" style="padding: 0.5rem;">
                                 <option value="">Tous les statuts</option>
                                 <option value="Disponible" <?= ($statut_filter == 'Disponible') ? 'selected' : '' ?>>Disponible</option>
                                 <option value="Emprunté" <?= ($statut_filter == 'Emprunté') ? 'selected' : '' ?>>Emprunté</option>
